@@ -10,7 +10,7 @@
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
-  * COPYRIGHT(c) 2018 STMicroelectronics
+  * COPYRIGHT(c) 2019 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -41,11 +41,14 @@
 #include "stm32f7xx_hal.h"
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 /* USER CODE BEGIN Includes */
 
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
+
+DAC_HandleTypeDef hdac;
 
 SPI_HandleTypeDef hspi4;
 SPI_HandleTypeDef hspi6;
@@ -59,27 +62,36 @@ uint8_t testdata_out_V2; //= 102; //2V Amplitude as an output
 uint8_t testdata_out;
 uint8_t DAC_A_Write = 0x1; // DAC's A output is selected 0 0 0 1
 uint8_t DAC_B_Write = 0x5; // DAC's B output is selected 0 1 0 1 
-//float DAC_A_Write;
-/*float DAC_A_Write = 1.000f;
-float DAC_B_Write = 5.000f;*/
+
 uint16_t DACA_Buf; 
 uint16_t DACB_Buf;
 uint8_t current;
 float volt;
 int tenth;
+char tenthhelper;
 int tenthvalue;
 int ones;
 float calc;
 int final;
+int worker1;
 
-//const uint32_t data = 0x0000001;
-//unsigned char bytes[4] ={ data, (data >> 8), (data >> 16), (data>>24) };
+float worker2;
+
+
+float valVolt = 0;
+uint32_t valByte;
+
+
+float BVhelp = 0;
+
+char currenthelp[3];
+
 
 /* my edits */
 int count = 0;
-uint8_t buffer[10];
+uint8_t buffer[11];
 
- 
+int BVhelper;
     
 
 
@@ -97,6 +109,7 @@ static void MX_GPIO_Init(void);
 static void MX_SPI6_Init(void);
 static void MX_SPI4_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_DAC_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -115,18 +128,9 @@ static void MX_USART2_UART_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-/*	char two[2] = "2";
-	int two1 = atoi(two);*/
-/*	testhelper = strtol(test, &eptr, 10);
-	bandaid = testhelper * 2;
-	bandaid1 = buffer[2] * 10;
-	OnesHelper[0] = test[0];
-	ones = atoi((char *)&OnesHelper[0]);
-	tenth = ones * 2;
-	//bandaid2 = atol(bandaid2buff);*/
-	
+	   
   /* USER CODE END 1 */
-
+	
   /* MCU Configuration----------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
@@ -148,19 +152,13 @@ int main(void)
   MX_SPI6_Init();
   MX_SPI4_Init();
   MX_USART2_UART_Init();
+  MX_DAC_Init();
   /* USER CODE BEGIN 2 */
-	
+	valByte = (uint8_t )((valVolt/4.0)*255);
+	HAL_DAC_Start(&hdac, DAC1_CHANNEL_1);
+	HAL_DAC_SetValue(&hdac, DAC1_CHANNEL_1, DAC_ALIGN_8B_R, valByte);
 	/* my edits*/
-//	__HAL_UART_ENABLE_IT(&huart3, UART_IT_RXNE);
-		
-		
-		 	//HAL_GPIO_WritePin(AnalogSWIC_LE_GPIO_Port, AnalogSWIC_LE_Pin, GPIO_PIN_RESET); // LE Pin set as low
-			//HAL_GPIO_WritePin(AnalogSWIC_CLR_GPIO_Port, AnalogSWIC_CLR_Pin, GPIO_PIN_RESET); // CLR pin set as low
-		  //HAL_SPI_Transmit(&hspi4,(uint8_t*)&Switch_Select1st,2,100);
-			//HAL_Delay(1);
-			//HAL_SPI_Transmit(&hspi4,(uint8_t*)&Switch_Select2nd,2,100);
-			//HAL_GPIO_WritePin(AnalogSWIC_LE_GPIO_Port, AnalogSWIC_LE_Pin, GPIO_PIN_SET); // LE pins set as high
-			//HAL_GPIO_WritePin(AnalogSWIC_CLR_GPIO_Port, AnalogSWIC_CLR_Pin, GPIO_PIN_SET); // CLR pin set as high
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -170,29 +168,127 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-		//mult = (int)two * (int)five;
-		HAL_UART_Receive(&huart2, buffer, 10, 1);
-		//bandaid2buff = (char) buffer;
-		//HAL_Delay(5);
-		HAL_GPIO_WritePin(DAC_SYNC_Pin_GPIO_Port, DAC_SYNC_Pin_Pin, GPIO_PIN_RESET);
-		DACA_Buf = DAC_A_Write<<12 | testdata_out<<4;
-	//	DACA_Buf = DAC_A_Write<12.00f | testdata_out<<4;
-		HAL_SPI_Transmit(&hspi6,(uint8_t*)&DACA_Buf,16,100);
-		HAL_Delay(1);
-		HAL_GPIO_WritePin(DAC_SYNC_Pin_GPIO_Port, DAC_SYNC_Pin_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(DAC_SYNC_Pin_GPIO_Port, DAC_SYNC_Pin_Pin, GPIO_PIN_RESET);
-		DACB_Buf =  DAC_B_Write<<12 | testdata_out <<4;
-		HAL_SPI_Transmit(&hspi6,(uint8_t*)&DACB_Buf,16,100);
-		HAL_Delay(1);
-		HAL_GPIO_WritePin(DAC_SYNC_Pin_GPIO_Port, DAC_SYNC_Pin_Pin, GPIO_PIN_SET);
-     		
-		// Analog Switch (PS323ESA) Input 1 and Input 2. 
-		HAL_GPIO_TogglePin(Input_1st_AnalogSW_Pin_GPIO_Port, Input_1st_AnalogSW_Pin_Pin);
-		HAL_Delay(1);
-		HAL_GPIO_TogglePin(Input_2nd_AnalogSW_Pin_GPIO_Port, Input_2nd_AnalogSW_Pin_Pin);
-		HAL_Delay(1);
 		
-		HAL_GPIO_WritePin(SW_1_GPIO_Port, SW_1_Pin, GPIO_PIN_RESET);
+		
+		HAL_UART_Receive(&huart2, buffer, 10, 1000);
+				
+		if(buffer[0] == 0x42) 
+		/*******************
+		check to see if a 'B' was entered, this stands for Bias Voltage
+		this is changing the Bias Voltage immediately
+		*******************/
+		{		
+			current = ((buffer[4] - '0') * 100) + ((buffer[5] - '0') * 10) + (buffer[6] - '0');
+			volt = current * (32.4)/1000.0 ;
+			calc = (float)volt * 256.0 / 5.0;
+			final = round(calc);
+			testdata_out_V2 = final;
+			HAL_Delay(100);
+
+			HAL_GPIO_WritePin(DAC_SYNC_Pin_GPIO_Port, DAC_SYNC_Pin_Pin, GPIO_PIN_RESET);
+			DACA_Buf = DAC_A_Write<<12 | testdata_out_V2<<4;
+	//		DACA_Buf = DAC_A_Write<12.00f | testdata_out<<4;
+			HAL_SPI_Transmit(&hspi6,(uint8_t*)&DACA_Buf,16,100);
+			HAL_Delay(1);
+			HAL_GPIO_WritePin(DAC_SYNC_Pin_GPIO_Port, DAC_SYNC_Pin_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(DAC_SYNC_Pin_GPIO_Port, DAC_SYNC_Pin_Pin, GPIO_PIN_RESET);
+			DACB_Buf =  DAC_B_Write<<12 | testdata_out_V2 <<4;
+			HAL_SPI_Transmit(&hspi6,(uint8_t*)&DACB_Buf,16,100);
+			HAL_Delay(1);
+			HAL_GPIO_WritePin(DAC_SYNC_Pin_GPIO_Port, DAC_SYNC_Pin_Pin, GPIO_PIN_SET);
+     	
+			// Analog Switch (PS323ESA) Input 1 and Input 2. 
+			HAL_GPIO_TogglePin(Input_1st_AnalogSW_Pin_GPIO_Port, Input_1st_AnalogSW_Pin_Pin);
+			HAL_Delay(10);
+			HAL_GPIO_TogglePin(Input_2nd_AnalogSW_Pin_GPIO_Port, Input_2nd_AnalogSW_Pin_Pin);
+			HAL_Delay(10);
+		
+			worker1 = buffer[1] - '0';
+			
+			valVolt = (((buffer[1] - '0') * 100) + ((buffer[2] - '0') * 10));
+			valVolt /= 1000;
+			
+			valByte = ((valVolt/3.0)*255);
+			//valByte = (uint8_t )((valVolt/4.0)*255);
+			HAL_DAC_Start(&hdac, DAC1_CHANNEL_1);
+			HAL_DAC_SetValue(&hdac, DAC1_CHANNEL_1, DAC_ALIGN_8B_R, valByte);
+		}
+		else if(buffer[0] != 0x42)
+		{
+			
+			if(buffer[2] == 0x31 ) //this checks if the electrode is on
+			{
+				current = ((buffer[3] - '0') * 100) + ((buffer[4] - '0') * 10) + (buffer[5] - '0');
+				volt = current * (32.4)/1000.0 ;
+				calc = (float)volt * 256.0 / 5.0;
+				final = round(calc);
+				testdata_out_V2 = final;
+				HAL_Delay(100);
+				
+				HAL_GPIO_WritePin(DAC_SYNC_Pin_GPIO_Port, DAC_SYNC_Pin_Pin, GPIO_PIN_RESET);
+				DACA_Buf = DAC_A_Write<<12 | testdata_out_V2<<4;
+	//		DACA_Buf = DAC_A_Write<12.00f | testdata_out<<4;
+				HAL_SPI_Transmit(&hspi6,(uint8_t*)&DACA_Buf,16,100);
+				HAL_Delay(1);
+				HAL_GPIO_WritePin(DAC_SYNC_Pin_GPIO_Port, DAC_SYNC_Pin_Pin, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(DAC_SYNC_Pin_GPIO_Port, DAC_SYNC_Pin_Pin, GPIO_PIN_RESET);
+				DACB_Buf =  DAC_B_Write<<12 | testdata_out_V2 <<4;
+				HAL_SPI_Transmit(&hspi6,(uint8_t*)&DACB_Buf,16,100);
+				HAL_Delay(1);
+				HAL_GPIO_WritePin(DAC_SYNC_Pin_GPIO_Port, DAC_SYNC_Pin_Pin, GPIO_PIN_SET);
+     		
+				// Analog Switch (PS323ESA) Input 1 and Input 2. 
+				HAL_GPIO_TogglePin(Input_1st_AnalogSW_Pin_GPIO_Port, Input_1st_AnalogSW_Pin_Pin);
+				HAL_Delay(10);
+				HAL_GPIO_TogglePin(Input_2nd_AnalogSW_Pin_GPIO_Port, Input_2nd_AnalogSW_Pin_Pin);
+				HAL_Delay(10);
+				if(buffer[0] == 0x30) //this block turns on the LED for ch 1-9
+				{
+					HAL_GPIO_WritePin(SW_10_GPIO_Port, SW_10_Pin, GPIO_PIN_RESET);
+					HAL_Delay(1);
+					HAL_GPIO_WritePin(SW_11_GPIO_Port, SW_11_Pin, GPIO_PIN_RESET);
+					HAL_Delay(1);
+					HAL_GPIO_WritePin(SW_12_GPIO_Port, SW_12_Pin, GPIO_PIN_RESET);
+					HAL_Delay(1);
+					HAL_GPIO_WritePin(SW_13_GPIO_Port, SW_13_Pin, GPIO_PIN_RESET);
+					HAL_Delay(1);
+					HAL_GPIO_WritePin(SW_14_GPIO_Port, SW_14_Pin, GPIO_PIN_RESET);
+					HAL_Delay(1);
+					HAL_GPIO_WritePin(SW_15_GPIO_Port, SW_15_Pin, GPIO_PIN_RESET);
+					HAL_Delay(1);
+					HAL_GPIO_WritePin(SW_16_GPIO_Port, SW_16_Pin, GPIO_PIN_RESET);
+					HAL_Delay(1);
+					if(buffer[1] == 0x31) //ch 1 is selected
+					{
+						HAL_GPIO_WritePin(SW_1_GPIO_Port, SW_1_Pin, GPIO_PIN_SET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_2_GPIO_Port, SW_2_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_3_GPIO_Port, SW_3_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_4_GPIO_Port, SW_4_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_5_GPIO_Port, SW_5_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_6_GPIO_Port, SW_6_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_7_GPIO_Port, SW_7_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_8_GPIO_Port, SW_8_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_9_GPIO_Port, SW_9_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+					
+						// Channel NO8 is enabled. Based on the circuit design, it is Channel 1 voltage monitoring.
+						HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
+						HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_SET);
+						HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_SET);
+						HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_SET);
+						HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_RESET);
+					}
+					else if(buffer[1] == 0x32) //ch 2 is selected
+					{
+						HAL_GPIO_WritePin(SW_1_GPIO_Port, SW_1_Pin, GPIO_PIN_RESET);
 						HAL_Delay(1);
 						HAL_GPIO_WritePin(SW_2_GPIO_Port, SW_2_Pin, GPIO_PIN_SET);
 						HAL_Delay(1);
@@ -210,298 +306,70 @@ int main(void)
 						HAL_Delay(1);
 						HAL_GPIO_WritePin(SW_9_GPIO_Port, SW_9_Pin, GPIO_PIN_RESET);
 						HAL_Delay(1);
-		HAL_GPIO_WritePin(SW_10_GPIO_Port, SW_10_Pin, GPIO_PIN_RESET);
-						HAL_Delay(1);
-						HAL_GPIO_WritePin(SW_11_GPIO_Port, SW_11_Pin, GPIO_PIN_RESET);
-						HAL_Delay(1);
-						HAL_GPIO_WritePin(SW_12_GPIO_Port, SW_12_Pin, GPIO_PIN_RESET);
-						HAL_Delay(1);
-						HAL_GPIO_WritePin(SW_13_GPIO_Port, SW_13_Pin, GPIO_PIN_RESET);
-						HAL_Delay(1);
-						HAL_GPIO_WritePin(SW_14_GPIO_Port, SW_14_Pin, GPIO_PIN_RESET);
-						HAL_Delay(1);
-						HAL_GPIO_WritePin(SW_15_GPIO_Port, SW_15_Pin, GPIO_PIN_RESET);
-						HAL_Delay(1);
-		HAL_GPIO_WritePin(SW_16_GPIO_Port, SW_16_Pin, GPIO_PIN_RESET);
-				/*
-				// 16:1 Multiplexer control
-				// Channel NO1 is enabled. Based on the circuit design, it is Channel 8 voltage monitoring.
-				HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_RESET);	
-				
-				// Channel NO2 is enabled. Based on the circuit design, it is Channel 7 voltage monitoring.
-				HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_RESET);
-				
 					
-				// Channel NO3 is enabled. Based on the circuit design, it is Channel 6 voltage monitoring.
-				HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_RESET);
-				
-				// Channel NO4 is enabled. Based on the circuit design, it is Channel 5 voltage monitoring.
-				HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_RESET);
-			
-				// Channel NO5 is enabled. Based on the circuit design, it is Channel 4 voltage monitoring.
-				HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_RESET);
-				
-				// Channel NO6 is enabled. Based on the circuit design, it is Channel 3 voltage monitoring.
-				HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_RESET);
-				
-				// Channel NO7 is enabled. Based on the circuit design, it is Channel 2 voltage monitoring.
-				HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_RESET);
-			
-				// Channel NO8 is enabled. Based on the circuit design, it is Channel 1 voltage monitoring.
-				HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_RESET);
-	
-				// Channel NO9 is enabled. Based on the circuit design, it is Channel 9 voltage monitoring.
-				HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_SET);
-				
-				// Channel NO10 is enabled. Based on the circuit design, it is Channel 10 voltage monitoring.
-				HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_SET);
-				
-				// Channel NO11 is enabled. Based on the circuit design, it is Channel 11 voltage monitoring.
-				HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_SET);
-				
-				// Channel NO12 is enabled. Based on the circuit design, it is Channel 12 voltage monitoring.
-				HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_SET);
-				
-				// Channel NO13 is enabled. Based on the circuit design, it is Channel 13 voltage monitoring.
-				HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_SET);
-				
-				// Channel NO14 is enabled. Based on the circuit design, it is Channel 14 voltage monitoring.
-				HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_SET);
-				
-				// Channel NO15 is enabled. Based on the circuit design, it is Channel 15 voltage monitoring.
-				HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_RESET);
-				HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_SET);
-				
-				// Channel NO16 is enabled. Based on the circuit design, it is Channel 16 voltage monitoring.
-				HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_SET);
-				HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_SET);*/
-				
-			//HAL_UART_Transmit(&huart2, (uint8_t *)"hello world\r\n", 13, 1000);
-		if(buffer[2] == 0x31 ) //this checks if the electrode is on
-		{
-			if(buffer[3] == 0x31) //this checks for the value of the amplitude at A2
-				//A2 is the hundredth place
-				//if A2 is equal to 1, then the only possible value for the amplitude is 100
-			{
-				current = 100;
-			}
-			else if(buffer[3] != 0x31) //if the value of the amplitude at A2 is not equal to 1, 
-				//then it must be in the range from 0 to 99
-			{
-				if(buffer[4] == 0x30) //this checks the value of the amplitude at A1
-				//A1 is the tenth place
-				//if the value of the amplitude at A1 is equal to 0, then the value must be in between 0 to 9
-				//0x30 == 0(radix 10)
-				{
-					//OnesHelper[0] = buffer[5];
-					ones = atoi((char *)&buffer[5]);
-					current = ones;
-				}
-				else if(buffer[4] != 0x30) //the value of the amplitude at the tenth place is not equal to 0
-				//the value of the amplitude is in the range of 10 to 99
-				{
-					ones = atoi((char *)&buffer[5]);
-					tenthvalue = atoi((char *)&buffer[4]);
-					tenth = tenthvalue * 10;
-					current = tenth + ones;
-				}
-			}
-			volt = current * (32.4) ;
-			calc = (float)volt * 256.0 / 5.0;
-			final = round(calc);
-			testdata_out_V2 = final;
-			HAL_Delay(100);
-			if(buffer[0] == 0x30) //this block turns on the LED for ch 1-9
-			{
-				HAL_GPIO_WritePin(SW_10_GPIO_Port, SW_10_Pin, GPIO_PIN_RESET);
-				HAL_Delay(1);
-				HAL_GPIO_WritePin(SW_11_GPIO_Port, SW_11_Pin, GPIO_PIN_RESET);
-				HAL_Delay(1);
-				HAL_GPIO_WritePin(SW_12_GPIO_Port, SW_12_Pin, GPIO_PIN_RESET);
-				HAL_Delay(1);
-				HAL_GPIO_WritePin(SW_13_GPIO_Port, SW_13_Pin, GPIO_PIN_RESET);
-				HAL_Delay(1);
-				HAL_GPIO_WritePin(SW_14_GPIO_Port, SW_14_Pin, GPIO_PIN_RESET);
-				HAL_Delay(1);
-				HAL_GPIO_WritePin(SW_15_GPIO_Port, SW_15_Pin, GPIO_PIN_RESET);
-				HAL_Delay(1);
-				HAL_GPIO_WritePin(SW_16_GPIO_Port, SW_16_Pin, GPIO_PIN_RESET);
-				HAL_Delay(1);
-				if(buffer[1] == 0x31) //ch 1 is selected
-				{
-					HAL_GPIO_WritePin(SW_1_GPIO_Port, SW_1_Pin, GPIO_PIN_SET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_2_GPIO_Port, SW_2_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_3_GPIO_Port, SW_3_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_4_GPIO_Port, SW_4_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_5_GPIO_Port, SW_5_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_6_GPIO_Port, SW_6_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_7_GPIO_Port, SW_7_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_8_GPIO_Port, SW_8_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_9_GPIO_Port, SW_9_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
+						// Channel NO7 is enabled. Based on the circuit design, it is Channel 2 voltage monitoring.
+						HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
+						HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_RESET);
+						HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_SET);
+						HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_SET);
+						HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_RESET);
+					}
+					else if(buffer[1] == 0x33) //ch 3 is selected
+					{
+						HAL_GPIO_WritePin(SW_1_GPIO_Port, SW_1_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_2_GPIO_Port, SW_2_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_3_GPIO_Port, SW_3_Pin, GPIO_PIN_SET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_4_GPIO_Port, SW_4_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_5_GPIO_Port, SW_5_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_6_GPIO_Port, SW_6_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_7_GPIO_Port, SW_7_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_8_GPIO_Port, SW_8_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_9_GPIO_Port, SW_9_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
 					
-					// Channel NO8 is enabled. Based on the circuit design, it is Channel 1 voltage monitoring.
-					HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-					HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_SET);
-					HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_SET);
-					HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_SET);
-					HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_RESET);
-				}
-				else if(buffer[1] == 0x32) //ch 2 is selected
-				{
-					HAL_GPIO_WritePin(SW_1_GPIO_Port, SW_1_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_2_GPIO_Port, SW_2_Pin, GPIO_PIN_SET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_3_GPIO_Port, SW_3_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_4_GPIO_Port, SW_4_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_5_GPIO_Port, SW_5_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_6_GPIO_Port, SW_6_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_7_GPIO_Port, SW_7_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_8_GPIO_Port, SW_8_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_9_GPIO_Port, SW_9_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
+						// Channel NO6 is enabled. Based on the circuit design, it is Channel 3 voltage monitoring.
+						HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
+						HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_SET);
+						HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_RESET);
+						HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_SET);
+						HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_RESET);
+					}
+					else if(buffer[1] == 0x34) //ch 4 is selected
+					{
+						HAL_GPIO_WritePin(SW_1_GPIO_Port, SW_1_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_2_GPIO_Port, SW_2_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_3_GPIO_Port, SW_3_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_4_GPIO_Port, SW_4_Pin, GPIO_PIN_SET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_5_GPIO_Port, SW_5_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_6_GPIO_Port, SW_6_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_7_GPIO_Port, SW_7_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_8_GPIO_Port, SW_8_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
+						HAL_GPIO_WritePin(SW_9_GPIO_Port, SW_9_Pin, GPIO_PIN_RESET);
+						HAL_Delay(1);
 					
-					// Channel NO7 is enabled. Based on the circuit design, it is Channel 2 voltage monitoring.
-					HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-					HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_RESET);
-					HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_SET);
-					HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_SET);
-					HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_RESET);
-				}
-				else if(buffer[1] == 0x33) //ch 3 is selected
-				{
-					HAL_GPIO_WritePin(SW_1_GPIO_Port, SW_1_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_2_GPIO_Port, SW_2_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_3_GPIO_Port, SW_3_Pin, GPIO_PIN_SET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_4_GPIO_Port, SW_4_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_5_GPIO_Port, SW_5_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_6_GPIO_Port, SW_6_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_7_GPIO_Port, SW_7_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_8_GPIO_Port, SW_8_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_9_GPIO_Port, SW_9_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					
-					// Channel NO6 is enabled. Based on the circuit design, it is Channel 3 voltage monitoring.
-					HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-					HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_SET);
-					HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_RESET);
-					HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_SET);
-					HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_RESET);
-				
-				}
-				else if(buffer[1] == 0x34) //ch 4 is selected
-				{
-					HAL_GPIO_WritePin(SW_1_GPIO_Port, SW_1_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_2_GPIO_Port, SW_2_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_3_GPIO_Port, SW_3_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_4_GPIO_Port, SW_4_Pin, GPIO_PIN_SET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_5_GPIO_Port, SW_5_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_6_GPIO_Port, SW_6_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_7_GPIO_Port, SW_7_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_8_GPIO_Port, SW_8_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					HAL_GPIO_WritePin(SW_9_GPIO_Port, SW_9_Pin, GPIO_PIN_RESET);
-					HAL_Delay(1);
-					
-					// Channel NO5 is enabled. Based on the circuit design, it is Channel 4 voltage monitoring.
-					HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
-					HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_RESET);
-					HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_RESET);
-					HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_SET);
-					HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_RESET);
-				}
+						// Channel NO5 is enabled. Based on the circuit design, it is Channel 4 voltage monitoring.
+						HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
+						HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_RESET);
+						HAL_GPIO_WritePin(MUX_A1_GPIO_Port,MUX_A1_Pin,GPIO_PIN_RESET);
+						HAL_GPIO_WritePin(MUX_A2_GPIO_Port,MUX_A2_Pin,GPIO_PIN_SET);
+						HAL_GPIO_WritePin(MUX_A3_GPIO_Port,MUX_A3_Pin,GPIO_PIN_RESET);
+					}
 				else if(buffer[1] == 0x35) //ch 5 is selected
 				{
 					HAL_GPIO_WritePin(SW_1_GPIO_Port, SW_1_Pin, GPIO_PIN_RESET);
@@ -579,8 +447,7 @@ int main(void)
 					HAL_Delay(1);
 					HAL_GPIO_WritePin(SW_9_GPIO_Port, SW_9_Pin, GPIO_PIN_RESET);
 					HAL_Delay(1);
-					
-					
+										
 					// Channel NO2 is enabled. Based on the circuit design, it is Channel 7 voltage monitoring.
 					HAL_GPIO_WritePin(MUX_EN_GPIO_Port,MUX_EN_Pin,GPIO_PIN_SET);
 					HAL_GPIO_WritePin(MUX_A0_GPIO_Port,MUX_A0_Pin,GPIO_PIN_SET);
@@ -838,6 +705,7 @@ int main(void)
 		}
 		else if(buffer[2] == 0x30) //this indicates for the selected channel to turn it off
 		{
+			
 			HAL_GPIO_WritePin(SW_1_GPIO_Port, SW_1_Pin, GPIO_PIN_RESET);
 			HAL_Delay(1);
 			HAL_GPIO_WritePin(SW_2_GPIO_Port, SW_2_Pin, GPIO_PIN_RESET);
@@ -870,12 +738,13 @@ int main(void)
 			HAL_Delay(1);
 			HAL_GPIO_WritePin(SW_16_GPIO_Port, SW_16_Pin, GPIO_PIN_RESET);
 			HAL_Delay(1);
+			}
 		}
-				
-  }
+	}	
+ }
   /* USER CODE END 3 */
 
-}
+
 
 /**
   * @brief System Clock Configuration
@@ -948,6 +817,31 @@ void SystemClock_Config(void)
 
   /* SysTick_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+}
+
+/* DAC init function */
+static void MX_DAC_Init(void)
+{
+
+  DAC_ChannelConfTypeDef sConfig;
+
+    /**DAC Initialization 
+    */
+  hdac.Instance = DAC;
+  if (HAL_DAC_Init(&hdac) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+    /**DAC channel OUT1 config 
+    */
+  sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
+  sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
+  if (HAL_DAC_ConfigChannel(&hdac, &sConfig, DAC_CHANNEL_1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
 }
 
 /* SPI4 init function */
